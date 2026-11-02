@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>우리학교 분실물 센터</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .pulse-badge {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="bg-indigo-600 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <div class="bg-white text-indigo-600 p-2 rounded-xl shadow-md">
+                    <i class="fa-solid fa-box-open text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold leading-tight">우리학교 분실물 센터</h1>
+                    <p class="text-xs text-indigo-200">학생부 / 교무실 습득물 실시간 검색</p>
+                </div>
+            </div>
+            <button onclick="openRegisterModal()" class="bg-emerald-500 hover:bg-emerald-600 text-white font-semibold px-4 py-2 rounded-lg transition-all duration-200 flex items-center space-x-2 shadow hover:shadow-md">
+                <i class="fa-solid fa-plus"></i>
+                <span class="hidden sm:inline">분실물 등록 (관리자/학생회)</span>
+                <span class="sm:hidden">등록</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full">
+
+        <!-- Banner Announcement -->
+        <div class="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg shadow-sm mb-6 flex items-start space-x-3">
+            <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xl mt-0.5"></i>
+            <div>
+                <h3 class="font-bold text-amber-800 text-sm sm:text-base">물건을 잃어버리셨나요?</h3>
+                <p class="text-xs sm:text-sm text-amber-700 mt-0.5">
+                    교무실 및 학생부에 접수된 습득물입니다. 본인 물건이 맞다면 **학생증**을 지참하여 보관 장소(학생부/교무실)로 방문해주세요.
+                </p>
+            </div>
+        </div>
+
+        <!-- Filter & Search Bar -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6 flex flex-col md:flex-row gap-3 items-center justify-between">
+            <div class="relative w-full md:w-96">
+                <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400"></i>
+                <input type="text" id="searchInput" onkeyup="filterItems()" placeholder="품목명, 습득 장소 검색..." class="w-full pl-9 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
+            </div>
+            
+            <div class="flex items-center space-x-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
+                <button onclick="setCategoryFilter('all')" class="cat-btn bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors">전체</button>
+                <button onclick="setCategoryFilter('전자기기')" class="cat-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors">전자기기</button>
+                <button onclick="setCategoryFilter('의류/잡화')" class="cat-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors">의류/잡화</button>
+                <button onclick="setCategoryFilter('학용품/도서')" class="cat-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors">학용품/도서</button>
+                <button onclick="setCategoryFilter('기타')" class="cat-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors">기타</button>
+            </div>
+        </div>
+
+        <!-- Item Cards Grid -->
+        <div id="itemGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Items rendered by JavaScript -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden text-center py-16">
+            <i class="fa-solid fa-box-open text-5xl text-slate-300 mb-3"></i>
+            <p class="text-slate-500 text-base font-semibold">등록된 분실물이 없거나 검색 결과가 없습니다.</p>
+        </div>
+
+    </main>
+
+    <!-- Modal: Item Detail View -->
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl transition-all transform scale-95 opacity-0 duration-200" id="detailModalContent">
+            <div class="relative">
+                <img id="modalImage" src="" alt="분실물" class="w-full h-64 object-cover">
+                <button onclick="closeDetailModal()" class="absolute top-3 right-3 bg-slate-900/50 hover:bg-slate-900/80 text-white w-8 h-8 rounded-full flex items-center justify-center transition-colors">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <span id="modalCategory" class="absolute bottom-3 left-3 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow"></span>
+            </div>
+            
+            <div class="p-6">
+                <!-- Target Header Text -->
+                <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-3 mb-4 text-center">
+                    <span class="text-xs font-bold text-indigo-500 uppercase tracking-wider block">🚨 주인을 기다리고 있어요</span>
+                    <h2 class="text-lg font-bold text-indigo-900 mt-0.5">"이 분실물의 사진을 찾습니다"</h2>
+                </div>
+
+                <h3 id="modalTitle" class="text-xl font-bold text-slate-800 mb-4"></h3>
+
+                <div class="space-y-2 text-sm text-slate-600 mb-6 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400"><i class="fa-solid fa-location-dot w-5 text-indigo-500"></i> 습득 장소:</span>
+                        <span id="modalLocation" class="font-semibold text-slate-700"></span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400"><i class="fa-solid fa-building w-5 text-indigo-500"></i> 현재 보관처:</span>
+                        <span id="modalKeeper" class="font-semibold text-slate-700"></span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-400"><i class="fa-solid fa-calendar-day w-5 text-indigo-500"></i> 접수 날짜:</span>
+                        <span id="modalDate" class="font-semibold text-slate-700"></span>
+                    </div>
+                    <div class="pt-2 border-t border-slate-200">
+                        <span class="text-slate-400 block mb-1"><i class="fa-solid fa-align-left w-5 text-indigo-500"></i> 상세 설명:</span>
+                        <p id="modalDesc" class="text-slate-700 bg-white p-2 rounded border border-slate-200 text-xs leading-relaxed"></p>
+                    </div>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button onclick="closeDetailModal()" class="w-1/2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold py-2.5 rounded-xl transition-colors text-sm">닫기</button>
+                    <button onclick="claimItem()" id="claimBtn" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm shadow">수령 완료 처리</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Register New Lost Item -->
+    <div id="registerModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
+                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-indigo-600"></i> 신규 분실물 등록
+                </h2>
+                <button onclick="closeRegisterModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">분실물 명칭 *</label>
+                    <input type="text" id="regTitle" required placeholder="예: 무선 이어폰(에어팟)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">카테고리 *</label>
+                        <select id="regCategory" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="전자기기">전자기기</option>
+                            <option value="의류/잡화">의류/잡화</option>
+                            <option value="학용품/도서">학용품/도서</option>
+                            <option value="기타">기타</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">현재 보관처 *</label>
+                        <select id="regKeeper" required class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                            <option value="1학년 교무실">1학년 교무실</option>
+                            <option value="2학년 교무실">2학년 교무실</option>
+                            <option value="3학년 교무실">3학년 교무실</option>
+                            <option value="학생부">학생부</option>
+                            <option value="본 교무실">본 교무실</option>
+                            <option value="행정실">행정실</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">습득 장소 *</label>
+                    <input type="text" id="regLocation" required placeholder="예: 2층 중앙계단, 체육관" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">관리 비밀번호 * (수령 완료 처리용 4자리)</label>
+                    <input type="password" id="regPassword" maxlength="4" required placeholder="비밀번호 4자리 숫자" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">이미지 업로드 *</label>
+                    <input type="file" id="regImage" accept="image/*" required onchange="previewImage(this)" class="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+                    <div id="imgPreviewContainer" class="mt-2 hidden">
+                        <img id="imgPreview" class="h-28 w-full object-cover rounded-lg border border-slate-200">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 mb-1">상세 특징 설명</label>
+                    <textarea id="regDesc" rows="2" placeholder="색상, 케이스 스티커 유무 등 특징 작성" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
+                </div>
+
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeRegisterModal()" class="px-4 py-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-lg text-sm font-semibold">취소</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold shadow">접수 등록하기</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Password Modal for Claiming -->
+    <div id="passwordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-xs w-full p-6 shadow-2xl text-center">
+            <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                <i class="fa-solid fa-lock text-xl"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800 mb-1">작성자 비밀번호 확인</h3>
+            <p class="text-xs text-slate-500 mb-4">등록 시 입력한 4자리 비밀번호를 입력해주세요.</p>
+            <input type="password" id="claimPasswordInput" maxlength="4" placeholder="비밀번호 4자리" class="w-full text-center tracking-widest text-lg font-bold px-3 py-2 border border-slate-300 rounded-lg mb-4 focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+            <div class="flex space-x-2">
+                <button onclick="closePasswordModal()" class="w-1/2 bg-slate-100 hover:bg-slate-200 text-slate-600 py-2 rounded-lg text-xs font-semibold">취소</button>
+                <button onclick="confirmClaimWithPassword()" class="w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white py-2 rounded-lg text-xs font-semibold shadow">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white px-4 py-3 rounded-xl shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 flex items-center space-x-2 z-50">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toastMsg" class="text-sm font-medium">성공적으로 처리되었습니다.</span>
+    </div>
+
+    <!-- Firebase Cloud Storage & JavaScript Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Global Firebase Setup
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'school-lost-found';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : { apiKey: "demo", authDomain: "demo.firebaseapp.com", projectId: "demo-app" };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let items = [];
+        let selectedItemId = null;
+        let currentFilter = 'all';
+        let uploadedImageBase64 = null;
+        let currentUser = null;
+
+        // Collection Reference (Public Shared Data)
+        const lostItemsColRef = collection(db, 'artifacts', appId, 'public', 'data', 'lost_items');
+
+        // Authenticate & Listen for Realtime Cloud Updates
+        async function initApp() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    const userCred = await signInWithCustomToken(auth, __initial_auth_token);
+                    currentUser = userCred.user;
+                } else {
+                    const userCred = await signInAnonymously(auth);
+                    currentUser = userCred.user;
+                }
+
+                // Subscribe to Cloud Data Changes
+                onSnapshot(lostItemsColRef, (snapshot) => {
+                    items = snapshot.docs.map(docSnap => ({
+                        id: docSnap.id,
+                        ...docSnap.data()
+                    }));
+                    // Sort by newest
+                    items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+                    renderItems();
+                }, (error) => {
+                    console.error("Firestore Subscribe Error:", error);
+                });
+
+            } catch (err) {
+                console.error("Auth initialization failed:", err);
+            }
+        }
+
+        // Render Cards
+        window.renderItems = function() {
+            const grid = document.getElementById('itemGrid');
+            const emptyState = document.getElementById('emptyState');
+            const searchVal = document.getElementById('searchInput').value.toLowerCase();
+            
+            grid.innerHTML = '';
+            
+            const filtered = items.filter(item => {
+                const matchesCategory = currentFilter === 'all' || item.category === currentFilter;
+                const matchesSearch = (item.title || '').toLowerCase().includes(searchVal) || 
+                                      (item.location || '').toLowerCase().includes(searchVal) ||
+                                      (item.keeper || '').toLowerCase().includes(searchVal);
+                return matchesCategory && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between group";
+                
+                const isClaimed = item.status === 'claimed';
+                
+                card.innerHTML = `
+                    <div>
+                        <!-- Image Container -->
+                        <div class="relative overflow-hidden aspect-video bg-slate-100">
+                            <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${isClaimed ? 'grayscale opacity-60' : ''}">
+                            
+                            <!-- Location Badge -->
+                            <span class="absolute top-3 left-3 bg-slate-900/70 backdrop-blur-md text-white text-xs px-2.5 py-1 rounded-full font-medium">
+                                <i class="fa-solid fa-building text-indigo-300 mr-1"></i>${item.keeper}
+                            </span>
+
+                            ${isClaimed ? `
+                                <div class="absolute inset-0 bg-slate-900/60 flex items-center justify-center">
+                                    <span class="bg-emerald-500 text-white font-bold px-4 py-1.5 rounded-full text-sm shadow-lg">수령 완료</span>
+                                </div>
+                            ` : ''}
+                        </div>
+
+                        <!-- Card Content -->
+                        <div class="p-4">
+                            <!-- Mandatory Text Banner -->
+                            <div class="bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-1.5 mb-3 flex items-center justify-between">
+                                <span class="text-xs font-bold text-indigo-600 flex items-center gap-1">
+                                    <i class="fa-solid fa-bullhorn pulse-badge text-indigo-500"></i>
+                                    "이 분실물의 사진을 찾습니다"
+                                </span>
+                                <span class="text-[10px] text-slate-400">${item.date}</span>
+                            </div>
+
+                            <h3 class="font-bold text-slate-800 text-base line-clamp-1 mb-2 group-hover:text-indigo-600 transition-colors">${item.title}</h3>
+                            
+                            <div class="space-y-1 text-xs text-slate-500">
+                                <p class="flex items-center"><i class="fa-solid fa-location-dot w-4 text-slate-400"></i> 습득장소: <span class="ml-1 text-slate-700 font-medium">${item.location}</span></p>
+                                <p class="flex items-center"><i class="fa-solid fa-tag w-4 text-slate-400"></i> 분류: <span class="ml-1 text-slate-700 font-medium">${item.category}</span></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Footer Action Button -->
+                    <div class="px-4 pb-4 pt-1">
+                        <button onclick="openDetailModal('${item.id}')" class="w-full bg-slate-100 group-hover:bg-indigo-600 group-hover:text-white text-slate-700 text-xs font-semibold py-2 rounded-lg transition-all duration-200">
+                            상세 정보 확인 및 찾아가기
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        };
+
+        // Category Filter Function
+        window.setCategoryFilter = function(category) {
+            currentFilter = category;
+            
+            const buttons = document.querySelectorAll('.cat-btn');
+            buttons.forEach(btn => {
+                if((category === 'all' && btn.innerText === '전체') || btn.innerText === category) {
+                    btn.className = "cat-btn bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors";
+                } else {
+                    btn.className = "cat-btn bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors";
+                }
+            });
+
+            renderItems();
+        };
+
+        window.filterItems = function() {
+            renderItems();
+        };
+
+        // Detail Modal Logic
+        window.openDetailModal = function(id) {
+            const item = items.find(i => i.id === id);
+            if (!item) return;
+
+            selectedItemId = id;
+            document.getElementById('modalImage').src = item.image;
+            document.getElementById('modalCategory').innerText = item.category;
+            document.getElementById('modalTitle').innerText = item.title;
+            document.getElementById('modalLocation').innerText = item.location;
+            document.getElementById('modalKeeper').innerText = item.keeper;
+            document.getElementById('modalDate').innerText = item.date;
+            document.getElementById('modalDesc').innerText = item.desc || "상세 설명이 없습니다.";
+
+            const claimBtn = document.getElementById('claimBtn');
+            if(item.status === 'claimed') {
+                claimBtn.innerText = "수령 완료됨";
+                claimBtn.disabled = true;
+                claimBtn.className = "w-1/2 bg-slate-300 text-slate-500 font-semibold py-2.5 rounded-xl cursor-not-allowed text-sm";
+            } else {
+                claimBtn.innerText = "수령 완료 처리";
+                claimBtn.disabled = false;
+                claimBtn.className = "w-1/2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm shadow";
+            }
+
+            const modal = document.getElementById('detailModal');
+            const content = document.getElementById('detailModalContent');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                content.classList.remove('scale-95', 'opacity-0');
+                content.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        };
+
+        window.closeDetailModal = function() {
+            const modal = document.getElementById('detailModal');
+            const content = document.getElementById('detailModalContent');
+            content.classList.remove('scale-100', 'opacity-100');
+            content.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 200);
+        };
+
+        window.claimItem = function() {
+            if (!selectedItemId) return;
+            document.getElementById('claimPasswordInput').value = '';
+            document.getElementById('passwordModal').classList.remove('hidden');
+        };
+
+        window.closePasswordModal = function() {
+            document.getElementById('passwordModal').classList.add('hidden');
+        };
+
+        // Confirm Password and Update Firestore
+        window.confirmClaimWithPassword = async function() {
+            const inputPass = document.getElementById('claimPasswordInput').value;
+            const item = items.find(i => i.id === selectedItemId);
+
+            if (!item) return;
+
+            if (item.password && inputPass === item.password) {
+                try {
+                    const itemDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'lost_items', selectedItemId);
+                    await updateDoc(itemDocRef, { status: 'claimed' });
+                    closePasswordModal();
+                    closeDetailModal();
+                    showToast("수령 완료로 처리되었습니다.");
+                } catch (err) {
+                    console.error("Update failed:", err);
+                    showToast("처리에 실패했습니다.", true);
+                }
+            } else {
+                showToast("비밀번호가 일치하지 않습니다.", true);
+            }
+        };
+
+        window.openRegisterModal = function() {
+            document.getElementById('registerModal').classList.remove('hidden');
+        };
+
+        window.closeRegisterModal = function() {
+            document.getElementById('registerModal').classList.add('hidden');
+            document.getElementById('registerForm').reset();
+            document.getElementById('imgPreviewContainer').classList.add('hidden');
+            uploadedImageBase64 = null;
+        };
+
+        window.previewImage = function(input) {
+            if (input.files && input.files[0]) {
+                const file = input.files[0];
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        // Create canvas for image compression
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+
+                        // Set maximum dimensions (e.g. 800px width/height)
+                        const MAX_WIDTH = 800;
+                        const MAX_HEIGHT = 800;
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > height) {
+                            if (width > MAX_WIDTH) {
+                                height *= MAX_WIDTH / width;
+                                width = MAX_WIDTH;
+                            }
+                        } else {
+                            if (height > MAX_HEIGHT) {
+                                width *= MAX_HEIGHT / height;
+                                height = MAX_HEIGHT;
+                            }
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // Compress quality to 0.7 JPEG format
+                        uploadedImageBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                        document.getElementById('imgPreview').src = uploadedImageBase64;
+                        document.getElementById('imgPreviewContainer').classList.remove('hidden');
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        // Save new item into Cloud Database
+        window.handleRegister = async function(e) {
+            e.preventDefault();
+
+            const title = document.getElementById('regTitle').value;
+            const category = document.getElementById('regCategory').value;
+            const keeper = document.getElementById('regKeeper').value;
+            const location = document.getElementById('regLocation').value;
+            const password = document.getElementById('regPassword').value;
+            const desc = document.getElementById('regDesc').value;
+
+            if (!uploadedImageBase64) {
+                showToast("이미지를 선택해주세요.", true);
+                return;
+            }
+
+            const today = new Date().toISOString().split('T')[0];
+
+            const newItem = {
+                title: title,
+                category: category,
+                keeper: keeper,
+                location: location,
+                password: password,
+                date: today,
+                timestamp: Date.now(),
+                desc: desc,
+                image: uploadedImageBase64,
+                status: "unclaimed"
+            };
+
+            try {
+                await addDoc(lostItemsColRef, newItem);
+                showToast("새 분실물이 성공적으로 등록되었습니다.");
+                closeRegisterModal();
+            } catch (err) {
+                console.error("Add doc error:", err);
+                showToast("등록 중 오류가 발생했습니다. 다시 시도해주세요.", true);
+            }
+        };
+
+        // Save new item into Cloud Database
+        window.handleRegister = async function(e) {
+            e.preventDefault();
+
+            const title = document.getElementById('regTitle').value;
+            const category = document.getElementById('regCategory').value;
+            const keeper = document.getElementById('regKeeper').value;
+            const location = document.getElementById('regLocation').value;
+            const password = document.getElementById('regPassword').value;
+            const desc = document.getElementById('regDesc').value;
+
+            const today = new Date().toISOString().split('T')[0];
+
+            const newItem = {
+                title: title,
+                category: category,
+                keeper: keeper,
+                location: location,
+                password: password,
+                date: today,
+                timestamp: Date.now(),
+                desc: desc,
+                image: uploadedImageBase64 || "https://images.unsplash.com/photo-1584438784894-089d6a62b8fa?w=500&auto=format&fit=crop&q=60",
+                status: "unclaimed"
+            };
+
+            try {
+                await addDoc(lostItemsColRef, newItem);
+                showToast("새 분실물이 성공적으로 등록되었습니다.");
+                closeRegisterModal();
+            } catch (err) {
+                console.error("Add doc error:", err);
+                showToast("등록 중 오류가 발생했습니다.", true);
+            }
+        };
+
+        window.showToast = function(message, isError = false) {
+            const toast = document.getElementById('toast');
+            const toastIcon = document.getElementById('toastIcon');
+            document.getElementById('toastMsg').innerText = message;
+            
+            if (isError) {
+                toast.classList.remove('bg-slate-800');
+                toast.classList.add('bg-rose-600');
+                toastIcon.className = "fa-solid fa-circle-exclamation text-white";
+            } else {
+                toast.classList.remove('bg-rose-600');
+                toast.classList.add('bg-slate-800');
+                toastIcon.className = "fa-solid fa-circle-check text-emerald-400";
+            }
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        };
+
+        // Run Initialization
+        initApp();
+    </script>
+</body>
+</html>
